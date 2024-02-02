@@ -1,0 +1,61 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_USER: sa
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: superheroes
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - network
+    ports:
+      - 3306:3306
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  java_app:
+    image: java
+    container_name: java
+    build:
+      context: java/
+      dockerfile: Dockerfile
+    ports:
+      - "8448:8448"
+    depends_on:
+      mysql:
+        condition: service_healthy
+        restart: true
+    environment:
+      spring.datasource.url: jdbc:mysql://localhost:3306/superheroes
+      spring.datasource.username: sa
+      spring.datasource.password: admin
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_USER: sa
+      MYSQL_PASSWORD: admin
+      MYSQL_DATABASE: superheroes
+    networks:
+      - network
+
+  angular_app:
+    container_name: angular
+    build:
+      context: angular/
+      dockerfile: Dockerfile
+    ports:
+      - "4200:4200"
+    depends_on:
+      - java_app
+    environment:
+      BACKEND_URL: http:/localhost:8448
+      
+volumes:
+  mysql_data:
+
+networks:
+  network:
